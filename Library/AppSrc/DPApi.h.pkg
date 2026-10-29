@@ -1,0 +1,30 @@
+﻿Use Winkern.pkg // for localfree
+
+External_Function WinAPI_CryptProtectData "CryptProtectData" Crypt32.dll ;
+    Pointer pDataIn ;
+    Pointer pszDataDescr ;
+    Pointer pOptionalEntropy ;
+    Pointer pvReserved ;
+    Pointer pPromptStruct ;
+    Integer dwFlags ;
+    Pointer pDataOut ;
+    Returns Integer
+
+External_Function WinAPI_CryptUnprotectData "CryptUnprotectData" Crypt32.dll ;
+    Pointer pDataIn ;
+    Pointer ppszDataDescr ;
+    Pointer pOptionalEntropy ;
+    Pointer pvReserved ;
+    Pointer pPromptStruct ;
+    Integer dwFlags ;
+    Pointer pDataOut ;
+    Returns Integer
+    
+Struct tDPAPI_DATA_BLOB
+    DWord cbData
+#IFDEF IS$WIN64
+    Integer iMissingAlignment1
+#ENDIF
+    Pointer pbData
+End_Struct
+    
