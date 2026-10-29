@@ -1,0 +1,177 @@
+﻿Use tWinStructs.pkg
+
+Struct tCREDENTIAL_ATTRIBUTE
+    Pointer Keyword
+    DWord Flags
+    DWord ValueSize
+    Pointer Value
+End_Struct
+
+Struct tCREDENTIAL
+    Integer dwFlags
+    Integer dwType
+    Pointer pszTargetName
+    Pointer pszComment
+    tWinFileTime ftLastWritten
+    Integer dwCredentialBlobSize
+#IFDEF IS$WIN64
+    Integer iMissingAlignment1
+#ENDIF
+    Pointer pbCredentialBlob
+    Integer dwPersist
+    Integer dwAttributeCount
+    Pointer pAttributes
+    Pointer pszTargetAlias
+    Pointer pszUserName
+End_Struct
+
+//
+// Protection type for credential providers secret protection routines
+//
+Enum_List
+    Define CredUnprotected
+    Define CredUserProtection
+    Define CredTrustedProtection
+    Define CredForSystemProtection
+End_Enum_List
+    
+//
+// Values of flags to CredWrite and CredWriteDomainCredentials
+//
+Define CRED_PRESERVE_CREDENTIAL_BLOB    for 1
+
+//
+// Values of flags to CredEnumerate
+//
+Define CRED_ENUMERATE_ALL_CREDENTIALS   for 1
+
+// Maximum length of the UserName field.  The worst case is <User>@<DnsDomain>
+Define CRED_MAX_USERNAME_LENGTH for 513 // (256+1+256)
+
+// Maximum length of the TargetName field for CRED_TYPE_GENERIC (in characters)
+Define CRED_MAX_GENERIC_TARGET_NAME_LENGTH for 32767
+
+//
+// Values of the Credential Type field.
+//
+Define CRED_TYPE_GENERIC                    for 1
+Define CRED_TYPE_DOMAIN_PASSWORD            for 2
+Define CRED_TYPE_DOMAIN_CERTIFICATE         for 3
+Define CRED_TYPE_DOMAIN_VISIBLE_PASSWORD    for 4
+Define CRED_TYPE_GENERIC_CERTIFICATE        for 5
+Define CRED_TYPE_DOMAIN_EXTENDED            for 6
+Define CRED_TYPE_MAXIMUM                    for 7    // Maximum supported cred type
+Define CRED_TYPE_MAXIMUM_EX                 for 1007 // (CRED_TYPE_MAXIMUM+1000)  // Allow new applications to run on old OSes
+
+//
+// Maximum size of the CredBlob field (in bytes)
+//
+Define CRED_MAX_CREDENTIAL_BLOB_SIZE for 2560 // (5*512)
+
+//
+// Values of the Credential Persist field
+//
+Define CRED_PERSIST_NONE            for 0
+Define CRED_PERSIST_SESSION         for 1
+Define CRED_PERSIST_LOCAL_MACHINE   for 2
+Define CRED_PERSIST_ENTERPRISE      for 3
+
+Define CRED_PROTECT_AS_SELF        for |CI$1
+Define CRED_PROTECT_TO_SYSTEM      for |CI$2
+
+//
+//  Username can be in <domain>\<user> or <user>@<domain>
+//  Length in characters, not including NULL termination.
+//
+Define CREDUI_MAX_USERNAME_LENGTH   for CRED_MAX_USERNAME_LENGTH
+Define CREDUI_MAX_PASSWORD_LENGTH   for (512 / 2)
+
+/*
+The CredWrite function creates a new credential or modifies an existing credential in the user's credential set. The new credential is associated with the logon session of the current token. The token must not have the user's security identifier (SID) disabled.
+
+[in] Credential
+A pointer to the CREDENTIAL structure to be written.
+
+[in] Flags
+Flags that control the function's operation. The following flag is defined.
+*/
+External_Function WinAPI_CredWrite "CredWriteW" AdvApi32.dll ;
+    Pointer Credential ;
+    DWord Flags ;
+    Returns Boolean
+
+/*
+CredRead parameters:
+
+[in] TargetName
+Pointer to a null-terminated string that contains the name of the credential to read.
+
+[in] Type
+Type of the credential to read. Type must be one of the CRED_TYPE_* defined types.
+
+[in] Flags
+Currently reserved and must be zero.
+
+[out] Credential
+Pointer to a single allocated block buffer to return the credential. Any pointers contained within the buffer are pointers to locations within this single allocated block. The single returned buffer must be freed by calling CredFree.
+*/
+External_Function WinAPI_CredRead "CredReadW" AdvApi32.dll ;
+    Pointer pszTargetName ;
+    DWord dwType ;
+    DWord dwFlags ;
+    Pointer pCredential ;
+    Returns Boolean
+
+External_Function WinAPI_CredFree "CredFree" Advapi32.dll ;
+    Pointer pBuffer ;
+    Returns Void_Type
+
+External_Function WinAPI_CredDelete "CredDeleteW" Advapi32.dll ;
+    Pointer pszTargetName ;
+    DWord dwType ;
+    DWord dwFlags ;
+    Returns Integer
+
+External_Function WinAPI_CredEnumerate "CredEnumerateW" AdvApi32.dll ;
+    Pointer pszFilter ;
+    DWord dwFlags ;
+    Pointer pdwCount ;
+    Pointer pCredentials ;
+    Returns Boolean
+
+External_Function WinAPI_CredRename "CredRenameW" AdvApi32.dll ;
+    Pointer pszOldTargetName ;
+    Pointer pszNewTargetName ;
+    DWord dwType ;
+    DWord dwFlags ;
+    Returns Boolean
+
+External_Function WinAPI_CredIsProtected "CredIsProtectedW" AdvApi32.dll ;
+    Pointer pszProtectedCredentials ;
+    Pointer pdwProtectionType ;
+    Returns Boolean
+    
+External_Function WinAPI_CredProtect "CredProtectW" AdvApi32.dll ;
+    Boolean fAsSelf ;
+    Pointer pszCredentials ;
+    DWord cchCredentials ;
+    Pointer pszProtectedCredentials ;
+    Pointer pcchMaxChars ;
+    Pointer ProtectionType ;
+    Returns Integer
+    
+External_Function WinAPI_CredUnprotect "CredUnprotectW" AdvApi32.dll ;
+    Longptr Flags ;
+    Pointer pszProtectedCredentials ;
+    DWord cchProtectedCredentials ;
+    Pointer pszCredentials ;
+    Pointer pcchMaxChars ;
+    Returns Integer
+
+External_Function WinAPI_CredUIParseUserName "CredUIParseUserNameW" credui.dll ;
+    Pointer pszUserName ;
+    Pointer pszUser ;
+    DWord ulUserMaxChars ;
+    Pointer pszDomain ;
+    DWord ulDomainMaxChars ;
+    Returns DWord

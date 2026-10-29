@@ -1,0 +1,77 @@
+﻿Use DPApi.h.pkg
+Use cCharTranslate.pkg
+Use GlobalFunctionsProcedures.pkg
+
+Class cDPAPI is a cObject
+    Function DecryptData String sValueIn Returns String[]
+        Handle hoCharTranslate
+        UChar[] ucValue ucDataOut
+        tDPAPI_DATA_BLOB InputBlob OutputBlob
+        WString wsDescription
+        Integer iRetval
+        String[2] sResults
+        Void_Type iVoid
+        Pointer pDescription
+
+        Get Create (RefClass (cCharTranslate)) to hoCharTranslate
+        Get Base64DecodeUCharArray of hoCharTranslate (StringToUCharArray (sValueIn)) to ucValue
+        Send Destroy of hoCharTranslate
+
+        Move (AddressOf (ucValue)) to InputBlob.pbData
+        Move (SizeOfArray (ucValue)) to InputBlob.cbData
+
+        Move 0 to pDescription
+        Move (WinAPI_CryptUnprotectData (AddressOf (InputBlob), AddressOf (pDescription), 0, 0, 0, 0, AddressOf (OutputBlob))) to iRetval
+        If (iRetval <> 0) Begin
+            Move (ResizeArray (ucDataOut, OutputBlob.cbData)) to ucDataOut
+            Move (CopyMemory (AddressOf (ucDataOut), OutputBlob.pbData, OutputBlob.cbData)) to iVoid
+            Move (UCharArrayToString (ucDataOut)) to sResults[0]
+            Move (PointerToWString (pDescription)) to sResults[1]
+            Move (LocalFree (pDescription)) to iVoid
+            Move (LocalFree (OutputBlob.pbData)) to iVoid
+        End
+        Else Begin
+            Move (ShowLastError ()) to iVoid
+        End
+
+        Function_Return sResults
+    End_Function
+
+    Function EncryptString String sValueIn String sDescription Returns String
+        UChar[] ucValue
+        Handle hoCharTranslate
+        String sValueOut
+
+        Move (StringToUCharArray (sValueIn)) to ucValue
+        Get EncryptUCharArray ucValue sDescription to ucValue
+        If (SizeOfArray (ucValue) > 0) Begin
+            Get Create (RefClass (cCharTranslate)) to hoCharTranslate
+            Get Base64EncodeToStr of hoCharTranslate (AddressOf (ucValue)) (SizeOfArray (ucValue)) to sValueOut
+            Send Destroy of hoCharTranslate
+        End
+
+        Function_Return sValueOut
+    End_Function
+
+    Function EncryptUCharArray UChar[] ucValue WString wsDescription Returns UChar[]
+        tDPAPI_DATA_BLOB InputBlob OutputBlob
+        Integer iRetval
+        UChar[] ucEncrypted
+        Void_Type iVoid
+
+        Move (AddressOf (ucValue)) to InputBlob.pbData
+        Move (SizeOfArray (ucValue)) to InputBlob.cbData
+
+        Move (WinAPI_CryptProtectData (AddressOf (InputBlob), AddressOf (wsDescription), 0, 0, 0, 0, AddressOf (OutputBlob))) to iRetval
+        If (iRetval <> 0) Begin
+            Move (ResizeArray (ucEncrypted, OutputBlob.cbData)) to ucEncrypted
+            Move (CopyMemory (AddressOf (ucEncrypted), OutputBlob.pbData, OutputBlob.cbData)) to iVoid
+            Move (LocalFree (OutputBlob.pbData)) to iVoid
+        End
+        Else Begin
+            Move (ShowLastError ()) to iVoid
+        End
+
+        Function_Return ucEncrypted
+    End_Function
+End_Class

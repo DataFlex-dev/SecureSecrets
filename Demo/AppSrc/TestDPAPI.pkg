@@ -1,0 +1,88 @@
+// Tests for cDPAPI. Uses the real Windows DPAPI (current user scope), so no mocking is needed.
+
+Object oDPAPITests is a cTestFixture
+    Set psTestFixtureName to "cDPAPI"
+
+    Object oDPAPI is a cDPAPI
+    End_Object
+
+    Object oEncryptedDataDiffersFromPlainText is a cTest
+        Procedure Test
+            String sCipher
+
+            Get EncryptString of oDPAPI "my secret value" "description" to sCipher
+
+            Send AssertSAreNotEqual "" sCipher "Cipher text must not be empty"
+            Send AssertSAreNotEqual "my secret value" sCipher "Cipher text must not equal the plain text"
+        End_Procedure
+    End_Object
+
+    Object oRoundTripRestoresValueAndDescription is a cTest
+        Procedure Test
+            String sCipher
+            String[] sResults
+
+            Get EncryptString of oDPAPI "my secret value" "my description" to sCipher
+            Get DecryptData of oDPAPI sCipher to sResults
+
+            Send AssertIAreEqual 2 (SizeOfArray (sResults)) "Decrypt returns value and description"
+            Send AssertSAreEqual "my secret value" sResults[0] "Decrypted value"
+            Send AssertSAreEqual "my description" sResults[1] "Decrypted description"
+        End_Procedure
+    End_Object
+
+    Object oRoundTripKeepsPunctuationAndSpaces is a cTest
+        Procedure Test
+            String sPlain sCipher
+            String[] sResults
+
+            Move '  P@ss w0rd! #$%^&*()_+-=[]{};:,.<>/?|~`"\  ' to sPlain
+            Get EncryptString of oDPAPI sPlain "special" to sCipher
+            Get DecryptData of oDPAPI sCipher to sResults
+
+            Send AssertSAreEqual sPlain sResults[0]
+        End_Procedure
+    End_Object
+
+    Object oRoundTripLongValue is a cTest
+        Procedure Test
+            String sPlain sCipher
+            String[] sResults
+
+            Move (Repeat ("0123456789", 500)) to sPlain
+            Get EncryptString of oDPAPI sPlain "long" to sCipher
+            Get DecryptData of oDPAPI sCipher to sResults
+
+            Send AssertIAreEqual 5000 (Length (sResults[0]))
+            Send AssertSAreEqual sPlain sResults[0]
+        End_Procedure
+    End_Object
+
+    Object oEncryptingEmptyStringReportsWindowsError is a cTest
+        // CryptProtectData rejects zero-length input (ERROR_INVALID_PARAMETER); it is surfaced via ShowLastError.
+        Procedure Test
+            String sCipher
+
+            Send ExpectError DFERR_WINDOWS
+            Get EncryptString of oDPAPI "" "empty" to sCipher
+            Send UnExpectError DFERR_WINDOWS
+
+            Send AssertSAreEqual "" sCipher
+        End_Procedure
+    End_Object
+
+    Object oDecryptingInvalidDataReportsWindowsError is a cTest
+        Procedure Test
+            String[] sResults
+
+            // "AAAA" is valid base64 but not a DPAPI blob; the failure is surfaced via ShowLastError.
+            Send ExpectError DFERR_WINDOWS
+            Get DecryptData of oDPAPI "AAAA" to sResults
+            Send UnExpectError DFERR_WINDOWS
+
+            Send AssertIAreEqual 2 (SizeOfArray (sResults)) "Result keeps its fixed shape"
+            Send AssertSAreEqual "" sResults[0] "No value is returned on failure"
+            Send AssertSAreEqual "" sResults[1] "No description is returned on failure"
+        End_Procedure
+    End_Object
+End_Object
